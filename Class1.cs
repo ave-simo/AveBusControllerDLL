@@ -4,16 +4,16 @@ using System.Threading;
 
 namespace AveBusControllerDLL
 {
-    internal class AveBusController
+    public class AveBusController
     {
-        private SerialPort serialPort = new SerialPort();
+        private static SerialPort serialPort = new SerialPort();
 
-        private bool read = false;
-        private Thread readBusThread;
+        private static bool read = false;
+        private static Thread readBusThread;
 
         // questo non è una funzione, è il tipo della funzione
         public delegate void BusGuiCallback(string key, string value);
-        private BusGuiCallback guiCallback = null; // questa è la funzione di callback richiamabile. E' messa a null e impostabile tramite un setter per permettere a programmi esterni di interagirci.
+        private static BusGuiCallback guiCallback = null; // questa è la funzione di callback richiamabile. E' messa a null e impostabile tramite un setter per permettere a programmi esterni di interagirci.
 
         private static byte[] CHANGE_LIGHT_STATUS_FRAME_COMMAND = new byte[] { 0x40, 0x07, 0x27, 0x27, 0x4E, 0x02, 0xFA, 0xEA };
         private static byte[] TURN_ON_LIGHT_1_FRAME_COMMAND = new byte[] { 0x40, 0x07, 0x27, 0x27, 0x4E, 0x01, 0xFA, 0xE9 };
@@ -25,7 +25,7 @@ namespace AveBusControllerDLL
 
         // ==============================================================
         // callback setter
-        public void registerEventHandler(BusGuiCallback eventHandler)
+        public static void registerEventHandler(BusGuiCallback eventHandler)
         {
             guiCallback = eventHandler;
         }
@@ -33,7 +33,7 @@ namespace AveBusControllerDLL
 
         // ==============================================================
         // getters and setters
-        public SerialPort getSerialPort()
+        public static SerialPort getSerialPort()
         {
             return serialPort;
         }
@@ -42,11 +42,11 @@ namespace AveBusControllerDLL
 
         // ==============================================================
         // methods to interact with ports
-        public string[] getAvailablePorts()
+        public static string[] getAvailablePorts()
         {
             return SerialPort.GetPortNames();
         }
-        public void configureSerialPort(string portName, int baudRate, Parity parity, sbyte databits, StopBits stopBits, Handshake handShake)
+        public static void configureSerialPort(string portName, int baudRate, Parity parity, sbyte databits, StopBits stopBits, Handshake handShake)
         {
             try
             {
@@ -66,7 +66,7 @@ namespace AveBusControllerDLL
                 return;
             }
         }
-        public void openSerialPort()
+        public static void openSerialPort()
         {
 
             try
@@ -87,33 +87,33 @@ namespace AveBusControllerDLL
 
         // ==============================================================
         // methods to write in avebus
-        public void changeLight1Status()
+        public static void changeLight1Status()
         {
             sendCommand(CHANGE_LIGHT_STATUS_FRAME_COMMAND);
             Console.WriteLine("command [CHANGE_LIGHT_STATUS_FRAME_COMMAND] sent.");
 
         }
-        public void turnOnLight_1()
+        public static void turnOnLight_1()
         {
             sendCommand(TURN_ON_LIGHT_1_FRAME_COMMAND);
             Console.WriteLine("command [TURN_ON_LIGHT_1_FRAME_COMMAND] sent.");
         }
-        public void turnOffLight_1()
+        public static void turnOffLight_1()
         {
             sendCommand(TURN_OFF_LIGHT_1_FRAME_COMMAND);
             Console.WriteLine("command [TURN_OFF_LIGHT_1_FRAME_COMMAND] sent.");
         }
-        public void turnOnLight_2()
+        public static void turnOnLight_2()
         {
             sendCommand(TURN_ON_LIGHT_2_FRAME_COMMAND);
             Console.WriteLine("command [TURN_ON_LIGHT_2_FRAME_COMMAND] sent.");
         }
-        public void turnOffLight_2()
+        public static void turnOffLight_2()
         {
             sendCommand(TURN_OFF_LIGHT_2_FRAME_COMMAND);
             Console.WriteLine("command [TURN_OFF_LIGHT_2_FRAME_COMMAND] sent.");
         }
-        private byte[] bitwiseNot(byte[] command)
+        private static byte[] bitwiseNot(byte[] command)
         {
             byte[] bitwiseInvertedCommand = new byte[command.Length];
 
@@ -125,7 +125,7 @@ namespace AveBusControllerDLL
         }
 
         // actually send frame in AveBus
-        private void sendCommand(byte[] command)
+        private static void sendCommand(byte[] command)
         {
             try
             {
@@ -144,7 +144,7 @@ namespace AveBusControllerDLL
 
         // ==============================================================
         // methods to read from avebus
-        public void startReadingBus()
+        public static void startReadingBus()
         {
             // evita doppio start
             if (readBusThread != null && readBusThread.IsAlive)
@@ -155,12 +155,12 @@ namespace AveBusControllerDLL
             readBusThread.Start();
             Console.WriteLine("started reading AveBus interface");
         }
-        public void stopReadingBus()
+        public static void stopReadingBus()
         {
-            this.read = false;
+            read = false;
             Console.WriteLine("stopped reading AveBus interface");
         }
-        private void readBusLoop()
+        private static void readBusLoop()
         {
             serialPort.DiscardInBuffer();
 
@@ -217,7 +217,7 @@ namespace AveBusControllerDLL
                 updateLightStatusIndicators(message);
             }
         }
-        private void updateLightStatusIndicators(string message)
+        private static void updateLightStatusIndicators(string message)
         {
             message = message.Trim();
 
@@ -232,7 +232,7 @@ namespace AveBusControllerDLL
 
         // ==============================================================
         // callback 
-        void propagateEvent(string eventKey, string eventValue)
+        static void propagateEvent(string eventKey, string eventValue)
         {
             if (guiCallback != null)
             {
