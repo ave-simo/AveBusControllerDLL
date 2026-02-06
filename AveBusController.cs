@@ -15,11 +15,24 @@ namespace AveBusControllerDLL
         public delegate void BusGuiCallback(string key, string value);
         private static BusGuiCallback guiCallback = null; // questa è la funzione di callback richiamabile. E' messa a null e impostabile tramite un setter per permettere a programmi esterni di interagirci.
 
-        private static byte[] CHANGE_LIGHT_STATUS_FRAME_COMMAND = new byte[] { 0x40, 0x07, 0x27, 0x27, 0x4E, 0x02, 0xFA, 0xEA };
-        private static byte[] TURN_ON_LIGHT_1_FRAME_COMMAND = new byte[] { 0x40, 0x07, 0x27, 0x27, 0x4E, 0x01, 0xFA, 0xE9 };
-        private static byte[] TURN_OFF_LIGHT_1_FRAME_COMMAND = new byte[] { 0x40, 0x07, 0x27, 0x27, 0x4E, 0x03, 0xFA, 0xEB };
-        private static byte[] TURN_ON_LIGHT_2_FRAME_COMMAND = new byte[] { 0x40, 0x07, 0x26, 0x26, 0x4E, 0x01, 0xFA, 0xE7 };
-        private static byte[] TURN_OFF_LIGHT_2_FRAME_COMMAND = new byte[] { 0x40, 0x07, 0x26, 0x26, 0x4E, 0x03, 0xFA, 0xE9 };
+        // light 1
+        private static byte[] CHANGE_LIGHT_STATUS_FRAME_COMMAND    = new byte[] { 0x40, 0x07, 0x27, 0x27, 0x4E, 0x02, 0xFA, 0xEA };
+        private static byte[] TURN_ON_LIGHT_1_FRAME_COMMAND        = new byte[] { 0x40, 0x07, 0x27, 0x27, 0x4E, 0x01, 0xFA, 0xE9 };
+        private static byte[] TURN_OFF_LIGHT_1_FRAME_COMMAND       = new byte[] { 0x40, 0x07, 0x27, 0x27, 0x4E, 0x03, 0xFA, 0xEB };
+        private static byte[] LIGHT_1_STATUS_REQUEST_FRAME_COMMAND = new byte[] { 0x20, 0x06, 0x26, 0x01, 0x40, 0xFB, /*0x92*/ 0x91 }; // TODO
+        private static byte[] LIGHT_1_STATUS_RESPONSE_FRAME_ON     = new byte[] { 0x20, 0x09, 0x01, 0x26, 0x04, 0x10, 0x00, 0x00, 0xF8, 0x6C }; // TODO
+        private static byte[] LIGHT_1_STATUS_RESPONSE_FRAME_OFF    = new byte[] { 0x20, 0x09, 0x01, 0x26, 0x04, 0x10, 0x00, 0x00, 0xF8, 0x6C }; // TODO 
+        private static bool light1statusRequestSent = false;
+        private static bool light1statusResponseReceived = false;
+
+        // light 2
+        private static byte[] TURN_ON_LIGHT_2_FRAME_COMMAND        = new byte[] { 0x40, 0x07, 0x26, 0x26, 0x4E, 0x01, 0xFA, 0xE7 };
+        private static byte[] TURN_OFF_LIGHT_2_FRAME_COMMAND       = new byte[] { 0x40, 0x07, 0x26, 0x26, 0x4E, 0x03, 0xFA, 0xE9 };
+        private static byte[] LIGHT_2_STATUS_REQUEST_FRAME_COMMAND = new byte[] { 0x20, 0x06, 0x26, 0x01, 0x40, 0xFB, 0x91 }; // frame 07-03 status req (basic) 0x92
+        private static byte[] LIGHT_2_STATUS_RESPONSE_FRAME_ON     = new byte[] { 0x20, 0x09, 0x01, 0x26, 0x04, 0x10, 0x00, 0x00, 0xF8, 0x6C};
+        private static byte[] LIGHT_2_STATUS_RESPONSE_FRAME_OFF    = new byte[] { 0x20, 0x09, 0x01, 0x26, 0x04, 0x10, 0x00, 0x00, 0xF8, 0x6C}; //TODO SNIFFA SU BUS
+        private static bool light2statusRequestSent = false;
+        private static bool light2statusResponseReceived = false;
 
 
 
@@ -103,6 +116,11 @@ namespace AveBusControllerDLL
             sendCommand(TURN_OFF_LIGHT_1_FRAME_COMMAND);
             Console.WriteLine("command [TURN_OFF_LIGHT_1_FRAME_COMMAND] sent.");
         }
+        public static void sendLight1StatusRequest()
+        {
+            sendCommand(LIGHT_1_STATUS_REQUEST_FRAME_COMMAND);
+            Console.WriteLine("command [LIGHT_1_STATUS_REQUEST_FRAME_COMMAND] sent.");
+        }
         public static void turnOnLight_2()
         {
             sendCommand(TURN_ON_LIGHT_2_FRAME_COMMAND);
@@ -112,6 +130,11 @@ namespace AveBusControllerDLL
         {
             sendCommand(TURN_OFF_LIGHT_2_FRAME_COMMAND);
             Console.WriteLine("command [TURN_OFF_LIGHT_2_FRAME_COMMAND] sent.");
+        }
+        public static void sendLight2StatusRequest()
+        {
+            sendCommand(LIGHT_2_STATUS_REQUEST_FRAME_COMMAND);
+            Console.WriteLine("command [LIGHT_2_STATUS_REQUEST_FRAME_COMMAND] sent.");
         }
         private static byte[] bitwiseNot(byte[] command)
         {
@@ -162,70 +185,98 @@ namespace AveBusControllerDLL
         }
         private static void readBusLoop()
         {
-            serialPort.DiscardInBuffer();
+            //serialPort.DiscardInBuffer();
 
             byte[] firstTwoBytesBuf = new byte[2];
             byte[] msgBuf;
             int len;
 
+
+            if (!light2statusRequestSent)
+            {
+                sendLight2StatusRequest(); // asks for light 2 status
+                light2statusRequestSent = true;
+            }
+
             while (read)
             {
                 // PEEK
-                if (serialPort.BytesToRead < 2)
+                if (serialPort.BytesToRead > 2)
+                {
+                    serialPort.Read(firstTwoBytesBuf, 0, 2);         // leggo i primi due byte
+                    len = (byte)((~firstTwoBytesBuf[1] & 0x1F) + 1); // calcolo lunghezza frame
+
+                    // frame sporco
+                    if (len < 7 || len > 32)
+                    {
+                        serialPort.DiscardInBuffer();
+                        continue;
+                    }
+
+                    msgBuf = new byte[len];
+
+                    // copio i primi due byte
+                    msgBuf[0] = firstTwoBytesBuf[0];
+                    msgBuf[1] = firstTwoBytesBuf[1];
+
+                    int remaining = len - 2;   // byte ancora da leggere
+                    int offset = 2;            // dove scrivere nel buffer
+
+                    // leggo bytes rimanenti
+                    while (remaining > 0)
+                    {
+                        int readNow = serialPort.Read(msgBuf, offset, remaining);
+                        offset += readNow;
+                        remaining -= readNow;
+                        Thread.Sleep(50);
+                    }
+
+                    // messaggio completo
+                    string message = "";
+                    for (int i = 0; i < msgBuf.Length; i++)
+                    {
+                        msgBuf[i] = (byte)~msgBuf[i];
+                        message += msgBuf[i].ToString("X2") + " ";
+                    }
+
+                    propagateEvent("PRINT_LOG", "[ " + message + "]" + Environment.NewLine);
+                    updateLightStatusIndicators(message);
+                }
+                else
                 {
                     Thread.Sleep(50);
                     continue;
                 }
 
-                serialPort.Read(firstTwoBytesBuf, 0, 2);         // leggo i primi due byte
-                len = (byte)((~firstTwoBytesBuf[1] & 0x1F) + 1); // calcolo lunghezza pacchetto
-
-                // frame sporco
-                if (len < 7 || len > 32)
-                {
-                    serialPort.DiscardInBuffer();
-                    continue;
-                }
-
-                msgBuf = new byte[len];
-
-                // copio i primi due byte
-                msgBuf[0] = firstTwoBytesBuf[0];
-                msgBuf[1] = firstTwoBytesBuf[1];
-
-                int remaining = len - 2;   // byte ancora da leggere
-                int offset = 2;            // dove scrivere nel buffer
-
-                // leggo bytes rimanenti
-                while (remaining > 0)
-                {
-                    int readNow = serialPort.Read(msgBuf, offset, remaining);
-                    offset += readNow;
-                    remaining -= readNow;
-                    Thread.Sleep(50);
-                }
-
-                // messaggio completo
-                string message = "";
-                for (int i = 0; i < msgBuf.Length; i++)
-                {
-                    msgBuf[i] = (byte)~msgBuf[i];
-                    message += msgBuf[i].ToString("X2") + " ";
-                }
-
-                propagateEvent("PRINT_LOG", "[ " + message + "]" + Environment.NewLine);
-                updateLightStatusIndicators(message);
             }
         }
         private static void updateLightStatusIndicators(string message)
         {
             message = message.Trim();
 
-            if (message.Equals("40 07 27 27 4E 01 FA E9".Trim())) propagateEvent("LIGHT_STATUS", "TURN_ON_LIGHT_1_FRAME_COMMAND");
-            if (message.Equals("40 07 27 27 4E 03 FA EB".Trim())) propagateEvent("LIGHT_STATUS", "TURN_OFF_LIGHT_1_FRAME_COMMAND");
-            if (message.Equals("40 07 26 26 4E 01 FA E7".Trim())) propagateEvent("LIGHT_STATUS", "TURN_ON_LIGHT_2_FRAME_COMMAND");
-            if (message.Equals("40 07 26 26 4E 03 FA E9".Trim())) propagateEvent("LIGHT_STATUS", "TURN_OFF_LIGHT_2_FRAME_COMMAND");
-            if (message.Equals("40 07 27 27 4E 02 FA EA".Trim())) { }
+            // light 2 status response
+            if (!light2statusResponseReceived)
+            {
+                if (message.Equals("20 09 01 26 04 10 01 00 F8 6C"))  // light 2 is on
+                {
+                    propagateEvent("LIGHT_STATUS", "TURN_ON_LIGHT_2_FRAME_COMMAND");
+                    light2statusResponseReceived = true;
+                }
+                else if (message.Equals("20 09 01 26 04 10 00 00 F8 6C")) // light 2 is off. controlla se giusto
+                {
+                    propagateEvent("LIGHT_STATUS", "TURN_OFF_LIGHT_2_FRAME_COMMAND");
+                    light2statusResponseReceived = true;
+                }
+            }
+
+            // light status update
+                 if (message.Equals("40 07 27 27 4E 01 FA E9".Trim())) propagateEvent("LIGHT_STATUS", "TURN_ON_LIGHT_1_FRAME_COMMAND");
+            else if (message.Equals("40 07 27 27 4E 03 FA EB".Trim())) propagateEvent("LIGHT_STATUS", "TURN_OFF_LIGHT_1_FRAME_COMMAND");
+            else if (message.Equals("40 07 26 26 4E 01 FA E7".Trim())) propagateEvent("LIGHT_STATUS", "TURN_ON_LIGHT_2_FRAME_COMMAND");
+            else if (message.Equals("40 07 26 26 4E 03 FA E9".Trim())) propagateEvent("LIGHT_STATUS", "TURN_OFF_LIGHT_2_FRAME_COMMAND");
+            else if (message.Equals("40 07 27 27 4E 02 FA EA".Trim())) { }
+
+
         }
 
 
