@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO.Ports;
+using System.Runtime.Remoting.Messaging;
 using System.Threading;
 
 namespace AveBusControllerDLL
@@ -104,37 +105,44 @@ namespace AveBusControllerDLL
         {
             sendCommand(CHANGE_LIGHT_STATUS_FRAME_COMMAND);
             Console.WriteLine("command [CHANGE_LIGHT_STATUS_FRAME_COMMAND] sent.");
+            propagateEvent("COMMAND_SENT", "[CHANGE_LIGHT_STATUS_FRAME_COMMAND]" + Environment.NewLine);
 
         }
         public static void turnOnLight_1()
         {
             sendCommand(TURN_ON_LIGHT_1_FRAME_COMMAND);
             Console.WriteLine("command [TURN_ON_LIGHT_1_FRAME_COMMAND] sent.");
+            propagateEvent("COMMAND_SENT", "TURN_ON_LIGHT_1_FRAME_COMMAND" + Environment.NewLine);
         }
         public static void turnOffLight_1()
         {
             sendCommand(TURN_OFF_LIGHT_1_FRAME_COMMAND);
             Console.WriteLine("command [TURN_OFF_LIGHT_1_FRAME_COMMAND] sent.");
+            propagateEvent("COMMAND_SENT", "[TURN_OFF_LIGHT_1_FRAME_COMMAND]" + Environment.NewLine);
         }
         public static void sendLight1StatusRequest()
         {
             sendCommand(LIGHT_1_STATUS_REQUEST_FRAME_COMMAND);
             Console.WriteLine("command [LIGHT_1_STATUS_REQUEST_FRAME_COMMAND] sent.");
+            propagateEvent("COMMAND_SENT", "[LIGHT_1_STATUS_REQUEST_FRAME_COMMAND]" + Environment.NewLine);
         }
         public static void turnOnLight_2()
         {
             sendCommand(TURN_ON_LIGHT_2_FRAME_COMMAND);
             Console.WriteLine("command [TURN_ON_LIGHT_2_FRAME_COMMAND] sent.");
+            propagateEvent("COMMAND_SENT", "[TURN_ON_LIGHT_2_FRAME_COMMAND]" + Environment.NewLine);
         }
         public static void turnOffLight_2()
         {
             sendCommand(TURN_OFF_LIGHT_2_FRAME_COMMAND);
             Console.WriteLine("command [TURN_OFF_LIGHT_2_FRAME_COMMAND] sent.");
+            propagateEvent("COMMAND_SENT", "[TURN_OFF_LIGHT_2_FRAME_COMMAND]" + Environment.NewLine);
         }
         public static void sendLight2StatusRequest()
         {
             sendCommand(LIGHT_2_STATUS_REQUEST_FRAME_COMMAND);
             Console.WriteLine("command [LIGHT_2_STATUS_REQUEST_FRAME_COMMAND] sent.");
+            propagateEvent("COMMAND_SENT", "[LIGHT_2_STATUS_REQUEST_FRAME_COMMAND]" + Environment.NewLine);
         }
         private static byte[] bitwiseNot(byte[] command)
         {
