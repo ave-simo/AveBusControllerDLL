@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO.Ports;
 using System.Runtime.Remoting.Messaging;
+using System.Text;
 using System.Threading;
 
 namespace AveBusControllerDLL
@@ -104,39 +105,32 @@ namespace AveBusControllerDLL
         public static void changeLight1Status()
         {
             sendCommand(CHANGE_LIGHT_STATUS_FRAME_COMMAND);
-            Console.WriteLine("command [CHANGE_LIGHT_STATUS_FRAME_COMMAND] sent.");
-            propagateEvent("COMMAND_SENT", "[CHANGE_LIGHT_STATUS_FRAME_COMMAND]" + Environment.NewLine);
-
+            Console.WriteLine("[DLL] command [CHANGE_LIGHT_STATUS_FRAME_COMMAND] sent.");
         }
         public static void turnOnLight_1()
         {
             sendCommand(TURN_ON_LIGHT_1_FRAME_COMMAND);
-            Console.WriteLine("command [TURN_ON_LIGHT_1_FRAME_COMMAND] sent.");
-            propagateEvent("COMMAND_SENT", "TURN_ON_LIGHT_1_FRAME_COMMAND" + Environment.NewLine);
+            Console.WriteLine("[DLL] command [TURN_ON_LIGHT_1_FRAME_COMMAND] sent.");
         }
         public static void turnOffLight_1()
         {
             sendCommand(TURN_OFF_LIGHT_1_FRAME_COMMAND);
-            Console.WriteLine("command [TURN_OFF_LIGHT_1_FRAME_COMMAND] sent.");
-            propagateEvent("COMMAND_SENT", "[TURN_OFF_LIGHT_1_FRAME_COMMAND]" + Environment.NewLine);
+            Console.WriteLine("[DLL] command [TURN_OFF_LIGHT_1_FRAME_COMMAND] sent.");
         }
         public static void sendLight1StatusRequest()
         {
             sendCommand(LIGHT_1_STATUS_REQUEST_FRAME_COMMAND);
-            Console.WriteLine("command [LIGHT_1_STATUS_REQUEST_FRAME_COMMAND] sent.");
-            propagateEvent("COMMAND_SENT", "[LIGHT_1_STATUS_REQUEST_FRAME_COMMAND]" + Environment.NewLine);
+            Console.WriteLine("[DLL] command [LIGHT_1_STATUS_REQUEST_FRAME_COMMAND] sent.");
         }
         public static void turnOnLight_2()
         {
             sendCommand(TURN_ON_LIGHT_2_FRAME_COMMAND);
-            Console.WriteLine("command [TURN_ON_LIGHT_2_FRAME_COMMAND] sent.");
-            propagateEvent("COMMAND_SENT", "[TURN_ON_LIGHT_2_FRAME_COMMAND]" + Environment.NewLine);
+            Console.WriteLine("[DLL] command [TURN_ON_LIGHT_2_FRAME_COMMAND] sent.");
         }
         public static void turnOffLight_2()
         {
             sendCommand(TURN_OFF_LIGHT_2_FRAME_COMMAND);
-            Console.WriteLine("command [TURN_OFF_LIGHT_2_FRAME_COMMAND] sent.");
-            propagateEvent("COMMAND_SENT", "[TURN_OFF_LIGHT_2_FRAME_COMMAND]" + Environment.NewLine);
+            Console.WriteLine("[DLL] command [TURN_OFF_LIGHT_2_FRAME_COMMAND] sent.");
         }
         public static void sendLight2StatusRequest()
         {
@@ -158,17 +152,32 @@ namespace AveBusControllerDLL
         // actually send frame in AveBus
         private static void sendCommand(byte[] command)
         {
+            // Prepariamo la stringa HEX per i log/server (NON invertita)
+            StringBuilder hex = new StringBuilder();
+            foreach (byte b in command)
+            {
+                hex.Append(b.ToString("X2") + " ");
+            }
+            string originalHex = hex.ToString().Trim();
+
+            // Notifichiamo il Server (usando i byte originali)
+            propagateEvent("COMMAND_SENT", originalHex);
+
             try
             {
-                serialPort.Write(bitwiseNot(command), 0, command.Length);
+                if (serialPort.IsOpen)
+                {
+                    // Invertiamo i byte SOLO per la scrittura fisica sul bus
+                    byte[] physicalBytes = bitwiseNot(command);
+                    serialPort.Write(physicalBytes, 0, physicalBytes.Length);
+
+                    Console.WriteLine($"[DLL] Inviato sul BUS: {originalHex}");
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Something went wrong. Error: ");
-                Console.WriteLine(ex.Message);
-                return;
+                Console.WriteLine("Errore seriale: " + ex.Message);
             }
-
         }
 
 
