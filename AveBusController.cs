@@ -37,6 +37,7 @@ namespace AveBusControllerDLL
         private static bool light2statusResponseReceived = false;
 
 
+        private static string PREFIX = "[ LIBAVE ]";
 
         // ==============================================================
         // callback setter
@@ -105,38 +106,38 @@ namespace AveBusControllerDLL
         public static void changeLight1Status()
         {
             sendCommand(CHANGE_LIGHT_STATUS_FRAME_COMMAND);
-            Console.WriteLine("[DLL] command [CHANGE_LIGHT_STATUS_FRAME_COMMAND] sent.");
+            Console.WriteLine(PREFIX+" command [CHANGE_LIGHT_STATUS_FRAME_COMMAND] sent.");
         }
         public static void turnOnLight_1()
         {
             sendCommand(TURN_ON_LIGHT_1_FRAME_COMMAND);
-            Console.WriteLine("[DLL] command [TURN_ON_LIGHT_1_FRAME_COMMAND] sent.");
+            Console.WriteLine(PREFIX + " command [TURN_ON_LIGHT_1_FRAME_COMMAND] sent.");
         }
         public static void turnOffLight_1()
         {
             sendCommand(TURN_OFF_LIGHT_1_FRAME_COMMAND);
-            Console.WriteLine("[DLL] command [TURN_OFF_LIGHT_1_FRAME_COMMAND] sent.");
+            Console.WriteLine(PREFIX + " command [TURN_OFF_LIGHT_1_FRAME_COMMAND] sent.");
         }
         public static void sendLight1StatusRequest()
         {
             sendCommand(LIGHT_1_STATUS_REQUEST_FRAME_COMMAND);
-            Console.WriteLine("[DLL] command [LIGHT_1_STATUS_REQUEST_FRAME_COMMAND] sent.");
+            Console.WriteLine(PREFIX + " command [LIGHT_1_STATUS_REQUEST_FRAME_COMMAND] sent.");
         }
         public static void turnOnLight_2()
         {
             sendCommand(TURN_ON_LIGHT_2_FRAME_COMMAND);
-            Console.WriteLine("[DLL] command [TURN_ON_LIGHT_2_FRAME_COMMAND] sent.");
+            Console.WriteLine(PREFIX + " command [TURN_ON_LIGHT_2_FRAME_COMMAND] sent.");
         }
         public static void turnOffLight_2()
         {
             sendCommand(TURN_OFF_LIGHT_2_FRAME_COMMAND);
-            Console.WriteLine("[DLL] command [TURN_OFF_LIGHT_2_FRAME_COMMAND] sent.");
+            Console.WriteLine(PREFIX + " command [TURN_OFF_LIGHT_2_FRAME_COMMAND] sent.");
         }
         public static void sendLight2StatusRequest()
         {
             sendCommand(LIGHT_2_STATUS_REQUEST_FRAME_COMMAND);
-            Console.WriteLine("command [LIGHT_2_STATUS_REQUEST_FRAME_COMMAND] sent.");
-            propagateEvent("COMMAND_SENT", "[LIGHT_2_STATUS_REQUEST_FRAME_COMMAND]" + Environment.NewLine);
+            Console.WriteLine(PREFIX + "command [LIGHT_2_STATUS_REQUEST_FRAME_COMMAND] sent.");
+            propagateEvent(PREFIX + "COMMAND_SENT", "[LIGHT_2_STATUS_REQUEST_FRAME_COMMAND]" + Environment.NewLine);
         }
         private static byte[] bitwiseNot(byte[] command)
         {
@@ -170,8 +171,6 @@ namespace AveBusControllerDLL
                     // Invertiamo i byte SOLO per la scrittura fisica sul bus
                     byte[] physicalBytes = bitwiseNot(command);
                     serialPort.Write(physicalBytes, 0, physicalBytes.Length);
-
-                    Console.WriteLine($"[DLL] Inviato sul BUS: {originalHex}");
                 }
             }
             catch (Exception ex)
@@ -256,7 +255,7 @@ namespace AveBusControllerDLL
                         message += msgBuf[i].ToString("X2") + " ";
                     }
 
-                    propagateEvent("PRINT_LOG", "[ " + message + "]" + Environment.NewLine);
+                    propagateEvent("PRINT_LOG", "[ " + message + "]");
                     updateLightStatusIndicators(message);
                 }
                 else
